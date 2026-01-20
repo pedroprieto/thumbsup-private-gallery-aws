@@ -118,6 +118,13 @@ Resources:
       UserPoolId: !Ref CognitoUserPool
       ManagedLoginVersion: "2"
 
+  ManagedLoginBranding:
+    Type: AWS::Cognito::ManagedLoginBranding
+    Properties:
+      ClientId: !Ref CognitoUserPoolClient
+      UserPoolId: !Ref CognitoUserPool
+      UseCognitoProvidedValues: True
+
   callbackFunction:
     Type: AWS::Serverless::Function
     Properties:
