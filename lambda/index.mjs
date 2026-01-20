@@ -106,7 +106,7 @@ export const handler = async (event) => {
 
   response.statusCode = "302";
   response.headers = {
-    location: `https://${distribDomainName}/index.html`,
+    location: `https://${distribDomainName}`,
   };
   return response;
 };
