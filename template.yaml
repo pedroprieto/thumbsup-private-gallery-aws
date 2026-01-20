@@ -167,6 +167,9 @@ Resources:
 
 
 Outputs:
+  DistributionDomainName:
+    Description: "Cloudfront Distribution Domain Name"
+    Value: !GetAtt CloudfrontDistribution.DomainName
   UserPoolId:
     Description: "User Pool Id"
     Value: !Ref CognitoUserPool
