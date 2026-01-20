@@ -1,0 +1,5 @@
+* Install
+1. Deploy
+2. Add 3 environment variables to Lambda function (not created in template because of circular dependencies)
+3. Create S3 policy for CloudFront OAC
+4. Create user in cognito
