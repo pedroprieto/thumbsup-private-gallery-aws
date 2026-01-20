@@ -1,5 +1,17 @@
-* Install
-1. Deploy
+* Private photo gallery with Thumbsup in AWS
+Infrastructure to deploy [[https://github.com/thumbsup/thumbsup][thumbsup]] in AWS using CloudFront, Cognito, Lambda and S3.
+
+* Install instructions
+TODO: improve
+
+** Prerequisites
+- S3 bucket
+- Signing key updated in Cloudfront
+- Trusted key group created in Cloudfront
+- SSM parameters for storing key data for signing cookies
+
+** Deploy instructions
+1. Deploy cloudformation template with AWS SAM
 2. Add 3 environment variables to Lambda function (not created in template because of circular dependencies)
 3. Create S3 policy for CloudFront OAC
 4. Create user in cognito
