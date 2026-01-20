@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Private Photo Gallery
+Transform:
+  - AWS::Serverless-2016-10-31
+Parameters:
+  TTLHours:
+    Type: String
+  keyPairParam:
+    Type: String
+  privateKeyParam:
+    Type: String
+  S3Bucket:
+    Type: String
+  TrustedKeyGroup:
+    Type: String
+
+Resources:
+  OACBucket:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig: 
+        Name: !Sub "private-photo-gallery-${AWS::StackName}"
+        OriginAccessControlOriginType: "s3"
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudfrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+        - Id: S3Origin
+          DomainName: !Sub "${S3Bucket}.s3.amazonaws.com"
+          OriginAccessControlId: !Ref OACBucket
+          S3OriginConfig:
+            OriginAccessIdentity: ""
+        - Id: LambdaOrigin
+          DomainName: !Select [2, !Split ["/", !GetAtt LambdaFunctionUrl.FunctionUrl]]
+          CustomOriginConfig:
+            HTTPSPort: '443'
+            OriginProtocolPolicy: https-only
+        Enabled: 'true'
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6" # Caching optimized
+          Compress: True
+          TrustedKeyGroups:
+            - !Ref TrustedKeyGroup
+          AllowedMethods:
+            - DELETE
+            - GET
+            - HEAD
+            - OPTIONS
+            - PATCH
+            - POST
+            - PUT
+          TargetOriginId: S3Origin
+          MinTTL: '100'
+          SmoothStreaming: 'true'
+          ViewerProtocolPolicy: https-only
+        CacheBehaviors:
+        - AllowedMethods:
+          - DELETE
+          - GET
+          - HEAD
+          - OPTIONS
+          - PATCH
+          - POST
+          - PUT
+          CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Caching disabled
+          OriginRequestPolicyId: "b689b0a8-53d0-40ab-baf2-68738e2966ac" # AllViewerExceptHostHeader. Include all querystrings and headers
+
+          TargetOriginId: LambdaOrigin
+          ViewerProtocolPolicy: https-only
+          MinTTL: '50'
+          PathPattern: /callback
+        CustomErrorResponses:
+        - ErrorCode: '403'
+          ResponsePagePath: "/error.html"
+          ResponseCode: '200'
+          ErrorCachingMinTTL: '30'
+        - ErrorCode: '404'
+          ResponsePagePath: "/error.html"
+          ResponseCode: '200'
+          ErrorCachingMinTTL: '30'
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: 'true'
+
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "PrivatePhotoGallery-${AWS::StackName}"
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: true
+      ClientName: !Sub "PrivatePhotoGalleryClient-${AWS::StackName}"
+      CallbackURLs:
+        - !Sub "https://${CloudfrontDistribution.DomainName}/callback"
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - phone
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "privatephotogallery-${AWS::StackName}"
+      UserPoolId: !Ref CognitoUserPool
+      ManagedLoginVersion: "2"
+
+  callbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "PrivatePhotoGallery-${AWS::StackName}"
+      Handler: index.handler
+      CodeUri: ./lambda/
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - SSMParameterWithSlashPrefixReadPolicy:
+            ParameterName: "/galeriafamiliar/*"
+      Environment:
+        Variables:
+          userPoolId: !Ref CognitoUserPool
+          # clientId: !Ref CognitoUserPoolClient # Circular dependency
+          # clientSecret: !GetAtt CognitoUserPoolClient.ClientSecret # Does not exist
+          AWS_STACK_NAME: !Ref "AWS::StackName"
+          cognitoRegion: !Sub "${AWS::Region}"
+          # distribDomainName: !GetAtt CloudfrontDistribution.DomainName # Circular dependency
+          keyPairParam: !Ref keyPairParam
+          privateKeyParam: !Ref privateKeyParam
+          TTLHours: !Ref TTLHours
+
+  LambdaFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt callbackFunction.Arn
+
+  permissionForURLInvoke:
+     Type: AWS::Lambda::Permission
+     Properties:
+       FunctionName: !Ref callbackFunction
+       FunctionUrlAuthType: 'NONE'
+       Action: lambda:InvokeFunctionUrl
+       Principal: '*'
+
+
+Outputs:
+  UserPoolId:
+    Description: "User Pool Id"
+    Value: !Ref CognitoUserPool
+  UserPoolClientId:
+    Description: "User Pool Client Id"
+    Value: !Ref CognitoUserPoolClient
+  UserPoolURL:
+      Value: !Sub 'https://${CognitoUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/login?response_type=code&client_id=${CognitoUserPoolClient}&redirect_uri=https://${CloudfrontDistribution.DomainName}/callback&scope=email+openid+phone'

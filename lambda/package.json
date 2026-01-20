@@ -1,0 +1,19 @@
+{
+  "name": "galeria-familiar",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudfront": "^3.971.0",
+    "@aws-sdk/client-ssm": "^3.971.0",
+    "@aws-sdk/cloudfront-signer": "^3.970.0",
+    "aws-jwt-verify": "^5.1.1",
+    "openid-client": "^6.8.1"
+  }
+}
