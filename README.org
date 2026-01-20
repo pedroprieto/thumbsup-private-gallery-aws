@@ -1,6 +1,8 @@
 * Private photo gallery with Thumbsup in AWS
 Infrastructure to deploy [[https://github.com/thumbsup/thumbsup][thumbsup]] in AWS using CloudFront, Cognito, Lambda and S3.
 
+Alternative to [[https://thumbsup.github.io/docs/5-deployment/password/][official instructions]] and based on https://github.com/thumbsup/aws-private-gallery.
+
 * Install instructions
 TODO: improve
 
