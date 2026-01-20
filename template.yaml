@@ -30,12 +30,18 @@ Resources:
     Properties:
       DistributionConfig:
         Origins:
-        - Id: S3Origin
+        - Id: Gallery
           DomainName: !Sub "${S3Bucket}.s3.amazonaws.com"
           OriginAccessControlId: !Ref OACBucket
           S3OriginConfig:
             OriginAccessIdentity: ""
-        - Id: LambdaOrigin
+          OriginPath: "/gallery"
+        - Id: Originals
+          DomainName: !Sub "${S3Bucket}.s3.amazonaws.com"
+          OriginAccessControlId: !Ref OACBucket
+          S3OriginConfig:
+            OriginAccessIdentity: ""
+        - Id: AuthCallback
           DomainName: !Select [2, !Split ["/", !GetAtt LambdaFunctionUrl.FunctionUrl]]
           CustomOriginConfig:
             HTTPSPort: '443'
@@ -55,9 +61,8 @@ Resources:
             - PATCH
             - POST
             - PUT
-          TargetOriginId: S3Origin
+          TargetOriginId: Gallery
           MinTTL: '100'
-          SmoothStreaming: 'true'
           ViewerProtocolPolicy: https-only
         CacheBehaviors:
         - AllowedMethods:
@@ -70,11 +75,26 @@ Resources:
           - PUT
           CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Caching disabled
           OriginRequestPolicyId: "b689b0a8-53d0-40ab-baf2-68738e2966ac" # AllViewerExceptHostHeader. Include all querystrings and headers
-
-          TargetOriginId: LambdaOrigin
+          TargetOriginId: AuthCallback
           ViewerProtocolPolicy: https-only
           MinTTL: '50'
           PathPattern: /callback
+        - AllowedMethods:
+          - DELETE
+          - GET
+          - HEAD
+          - OPTIONS
+          - PATCH
+          - POST
+          - PUT
+          CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6" # Caching optimized
+          Compress: True
+          TrustedKeyGroups:
+            - !Ref TrustedKeyGroup
+          TargetOriginId: Originals
+          ViewerProtocolPolicy: https-only
+          MinTTL: '50'
+          PathPattern: /originals/*
         CustomErrorResponses:
         - ErrorCode: '403'
           ResponsePagePath: "/error.html"
